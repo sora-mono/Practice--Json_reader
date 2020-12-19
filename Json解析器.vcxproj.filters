@@ -18,5 +18,13 @@
     <ClCompile Include="Json解析器.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Json.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Json.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
