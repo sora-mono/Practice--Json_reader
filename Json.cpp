@@ -38,7 +38,7 @@ Json::~Json()
 Json& Json::loads(const string& str)
 {
 	size_t index = 0;
-	node* now = new node(node::type_list::ROOT,false);
+	node* now = new node(node::type_list::ROOT, false);
 	node::obj_var key_now = std::monostate();
 	stack<pair<node::obj_var, node*>>st;
 	while (index < str.size())
@@ -215,7 +215,7 @@ Json& Json::loads(const string& str)
 					{
 						if (now->type == node::type_list::VECTOR)
 						{
-							get<node::obj_vec*>(*now->p)->emplace_back(node(node::type_list::LEAF_INT, temp));
+							get<node::obj_vec*>(*now->p)->emplace_back(node(node::type_list::LEAF_DOUBLE, temp));
 						}
 						else
 						{
@@ -231,7 +231,7 @@ Json& Json::loads(const string& str)
 					{
 						if (now->type == node::type_list::DICTIONARY)
 						{
-							get<node::obj_map*>(*now->p)->emplace(key_now, node(node::type_list::LEAF_DOUBLE, temp));
+							get<node::obj_map*>(*now->p)->emplace(key_now, node(node::type_list::LEAF_INT, temp));
 							key_now = std::monostate();
 						}
 						else
@@ -258,7 +258,94 @@ Json& Json::loads(const string& str)
 	}
 	return *this;
 }
-void Json::show()const
+
+void Json::node::show(ostream& s, const obj_var& x)const
 {
-	
+	switch (x.index())
+	{
+	case 1:
+		cout << get<int>(x);
+		break;
+	case 2:
+		cout << get<double>(x);
+		break;
+	case 3:
+		cout << '\"' << get<string>(x) << '\"';
+		break;
+	default:
+		break;
+	}
+}
+
+void Json::node::show(ostream& out, const Json::node& n, size_t level)const
+{
+	auto get_blanks = [](string& sblanks, size_t level)
+	{
+		for (size_t i = 0; i < level; i++)
+		{
+			sblanks += "  ";
+		}
+	};
+	switch (n.type)
+	{
+	case node::type_list::DICTIONARY:
+	{
+		string sblanks;
+		get_blanks(sblanks, level);
+		out << '{' << endl;
+		size_t iindex = 0;
+		for (auto& x : *get<obj_map*>(*n.p))
+		{
+			out << sblanks << "  ";
+			show(out, x.first);
+			out << ": ";
+			show(out, x.second, level + 1);
+			if (++iindex < get<obj_map*>(*n.p)->size())
+			{
+				out << ',';
+			}
+			out << endl;
+		}
+		out << sblanks << "}";
+	}
+	break;
+	case node::type_list::VECTOR:
+	{
+		string sblanks;
+		get_blanks(sblanks, level);
+		out << '[' << endl;
+		size_t iindex = 0;
+		for (auto& x : *get<obj_vec*>(*n.p))
+		{
+			out << sblanks<<"  ";
+			show(out, x, level + 1);
+			if (++iindex < get<obj_vec*>(*n.p)->size())
+			{
+				out << ',';
+			}
+			out << endl;
+		}
+		out << sblanks << ']';
+	}
+	break;
+	case node::type_list::LEAF_INT:
+		out << get<int>(*n.p);
+		break;
+	case node::type_list::LEAF_DOUBLE:
+		out << get<double>(*n.p);
+		break;
+	case node::type_list::LEAF_STRING:
+		out << '\"' << *get<string*>(*n.p) << '\"';
+		break;
+	case node::type_list::LEAF_BOOL:
+		out << (get<bool>(*n.p) == false ? "false" : "true");
+		break;
+	default:
+		break;
+	}
+}
+
+void Json::show(ostream& out)const
+{
+	root->show(out, *root, 0);
 }

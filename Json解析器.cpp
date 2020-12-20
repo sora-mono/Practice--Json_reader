@@ -15,4 +15,6 @@ int main()
 		getline(cin, temp);
 	}
 	j.loads(str);
+	j.show(cout);
+
 }

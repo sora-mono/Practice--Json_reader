@@ -12,6 +12,11 @@ const int MAX_STR_LENGTH = 500;
 
 using namespace std;
 
+template<class T>
+concept argument = requires(T t)
+{
+	is_same<T, int>::value || is_same<T, double>::value || is_same<T, string>::value;
+};
 class Json
 {
 private:
@@ -33,8 +38,10 @@ private:
 		using num_int = int;
 		using num_double = double;
 		enum class type_list :char { EMPTY, ROOT, DICTIONARY, VECTOR, LEAF_INT, LEAF_DOUBLE, LEAF_STRING, LEAF_BOOL };
+
 		type_list type;
 		pointer* p;
+
 		inline node() :type(node::type_list::EMPTY), p(nullptr) {}
 		template<class T>
 		inline node(type_list type_, T p_);
@@ -42,6 +49,10 @@ private:
 		node(node&& n)noexcept;
 		node(const node& n) = delete;
 		~node();
+		void show(ostream& out, const node& n, size_t level)const;
+		void show(ostream& s, const obj_var& x)const;
+		template<argument T>
+		auto& operator[](const T &arg)const;
 	};
 	node* root;
 public:
@@ -51,5 +62,7 @@ public:
 	Json(Json&& j) noexcept;
 	~Json();
 	Json& loads(const string& str);
-	void show()const;
+	void show(ostream& out)const;
+	template<argument T>
+	inline auto& operator[](const T& arg)const { return root->operator[](arg); };
 };
