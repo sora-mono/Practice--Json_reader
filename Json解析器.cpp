@@ -1,5 +1,4 @@
 ﻿#include"Json.h"
-
 using namespace std;
 
 int main()
@@ -15,6 +14,5 @@ int main()
 		getline(cin, temp);
 	}
 	j.loads(str);
-	j.show(cout);
-
+	j.get_value<string>(0,string("_id"));
 }

@@ -31,10 +31,6 @@ Json::Json(Json&& j)noexcept
 	root = j.root;
 	j.root = nullptr;
 }
-Json::~Json()
-{
-	delete root;
-}
 Json& Json::loads(const string& str)
 {
 	size_t index = 0;
@@ -63,8 +59,7 @@ Json& Json::loads(const string& str)
 				if ((now->type == node::type_list::DICTIONARY && str[index] == '}')
 					|| (now->type == node::type_list::VECTOR && str[index] == ']'))
 				{
-					get<node::obj_map*>(*st.top().second->p)->emplace(st.top().first, move(*now));
-					delete now;
+					get<node::obj_map*>(*st.top().second->p)->emplace(move(st.top().first), now);
 					now = st.top().second;
 					st.pop();
 				}
@@ -77,8 +72,7 @@ Json& Json::loads(const string& str)
 				if ((now->type == node::type_list::DICTIONARY && str[index] == '}')
 					|| (now->type == node::type_list::VECTOR && str[index] == ']'))
 				{
-					get<node::obj_vec*>(*st.top().second->p)->emplace_back(move(*now));
-					delete now;
+					get<node::obj_vec*>(*st.top().second->p)->emplace_back(now);
 					now = st.top().second;
 					st.pop();
 				}
@@ -90,7 +84,7 @@ Json& Json::loads(const string& str)
 			case node::type_list::ROOT:
 				delete st.top().second;
 				st.pop();
-				root = now;
+				root.reset(now);
 				index = str.size();
 				break;
 			default:
@@ -119,7 +113,7 @@ Json& Json::loads(const string& str)
 			{
 				if (now->type == node::type_list::VECTOR)
 				{
-					get<node::obj_vec*>(*now->p)->emplace_back(node(node::type_list::LEAF_STRING, new string(str_temp)));
+					get<node::obj_vec*>(*now->p)->emplace_back(new node(node::type_list::LEAF_STRING, new string(str_temp)));
 				}
 				else
 				{
@@ -130,7 +124,7 @@ Json& Json::loads(const string& str)
 			{
 				if (now->type == node::type_list::DICTIONARY)
 				{
-					get<node::obj_map*>(*now->p)->emplace(key_now, node(node::type_list::LEAF_STRING, new string(str_temp)));
+					get<node::obj_map*>(*now->p)->emplace(move(key_now), new node(node::type_list::LEAF_STRING, new string(str_temp)));
 					key_now = std::monostate();
 				}
 				else
@@ -154,12 +148,16 @@ Json& Json::loads(const string& str)
 			}
 			if (now->type == node::type_list::DICTIONARY)
 			{
-				get<node::obj_map*>(*now->p)->emplace(key_now, node(node::type_list::LEAF_BOOL, false));
+				get<node::obj_map*>(*now->p)->emplace(move(key_now), new node(node::type_list::LEAF_BOOL, false));
 				key_now = std::monostate();
 			}
 			else if (now->type == node::type_list::VECTOR)
 			{
-				get<node::obj_vec*>(*now->p)->emplace_back(node(node::type_list::LEAF_BOOL, false));
+				get<node::obj_vec*>(*now->p)->emplace_back(new node(node::type_list::LEAF_BOOL, false));
+			}
+			else
+			{
+				throw runtime_error("Can't save false value in a leaf");
 			}
 			index += 5;
 			break;
@@ -170,12 +168,16 @@ Json& Json::loads(const string& str)
 			}
 			if (now->type == node::type_list::DICTIONARY)
 			{
-				get<node::obj_map*>(*now->p)->emplace(key_now, node(node::type_list::LEAF_BOOL, true));
+				get<node::obj_map*>(*now->p)->emplace(move(key_now), new node(node::type_list::LEAF_BOOL, true));
 				key_now = std::monostate();
 			}
 			else if (now->type == node::type_list::VECTOR)
 			{
-				get<node::obj_vec*>(*now->p)->emplace_back(node(node::type_list::LEAF_BOOL, true));
+				get<node::obj_vec*>(*now->p)->emplace_back(new node(node::type_list::LEAF_BOOL, true));
+			}
+			else
+			{
+				throw runtime_error("Can't save true value in a leaf");
 			}
 			break;
 		case' ':
@@ -203,7 +205,7 @@ Json& Json::loads(const string& str)
 					{
 						if (now->type == node::type_list::DICTIONARY)
 						{
-							get<node::obj_map*>(*now->p)->emplace(key_now, node(node::type_list::LEAF_DOUBLE, temp));
+							get<node::obj_map*>(*now->p)->emplace(move(key_now), new node(node::type_list::LEAF_DOUBLE, temp));
 							key_now = std::monostate();
 						}
 						else
@@ -215,7 +217,7 @@ Json& Json::loads(const string& str)
 					{
 						if (now->type == node::type_list::VECTOR)
 						{
-							get<node::obj_vec*>(*now->p)->emplace_back(node(node::type_list::LEAF_DOUBLE, temp));
+							get<node::obj_vec*>(*now->p)->emplace_back(new node(node::type_list::LEAF_DOUBLE, temp));
 						}
 						else
 						{
@@ -231,7 +233,7 @@ Json& Json::loads(const string& str)
 					{
 						if (now->type == node::type_list::DICTIONARY)
 						{
-							get<node::obj_map*>(*now->p)->emplace(key_now, node(node::type_list::LEAF_INT, temp));
+							get<node::obj_map*>(*now->p)->emplace(move(key_now), new node(node::type_list::LEAF_INT, temp));
 							key_now = std::monostate();
 						}
 						else
@@ -243,7 +245,7 @@ Json& Json::loads(const string& str)
 					{
 						if (now->type == node::type_list::VECTOR)
 						{
-							get<node::obj_vec*>(*now->p)->emplace_back(node(node::type_list::LEAF_INT, temp));
+							get<node::obj_vec*>(*now->p)->emplace_back(new node(node::type_list::LEAF_INT, temp));
 						}
 						else
 						{
@@ -277,7 +279,7 @@ void Json::node::show(ostream& s, const obj_var& x)const
 	}
 }
 
-void Json::node::show(ostream& out, const Json::node& n, size_t level)const
+void Json::node::show(ostream& out, size_t level)const
 {
 	auto get_blanks = [](string& sblanks, size_t level)
 	{
@@ -286,7 +288,7 @@ void Json::node::show(ostream& out, const Json::node& n, size_t level)const
 			sblanks += "  ";
 		}
 	};
-	switch (n.type)
+	switch (type)
 	{
 	case node::type_list::DICTIONARY:
 	{
@@ -294,13 +296,13 @@ void Json::node::show(ostream& out, const Json::node& n, size_t level)const
 		get_blanks(sblanks, level);
 		out << '{' << endl;
 		size_t iindex = 0;
-		for (auto& x : *get<obj_map*>(*n.p))
+		for (auto& x : *get<obj_map*>(*p))
 		{
 			out << sblanks << "  ";
 			show(out, x.first);
 			out << ": ";
-			show(out, x.second, level + 1);
-			if (++iindex < get<obj_map*>(*n.p)->size())
+			x.second.get()->show(out, level + 1);
+			if (++iindex < get<obj_map*>(*p)->size())
 			{
 				out << ',';
 			}
@@ -315,11 +317,11 @@ void Json::node::show(ostream& out, const Json::node& n, size_t level)const
 		get_blanks(sblanks, level);
 		out << '[' << endl;
 		size_t iindex = 0;
-		for (auto& x : *get<obj_vec*>(*n.p))
+		for (auto& x : *get<obj_vec*>(*p))
 		{
-			out << sblanks<<"  ";
-			show(out, x, level + 1);
-			if (++iindex < get<obj_vec*>(*n.p)->size())
+			out << sblanks << "  ";
+			x.get()->show(out, level + 1);
+			if (++iindex < get<obj_vec*>(*p)->size())
 			{
 				out << ',';
 			}
@@ -329,23 +331,24 @@ void Json::node::show(ostream& out, const Json::node& n, size_t level)const
 	}
 	break;
 	case node::type_list::LEAF_INT:
-		out << get<int>(*n.p);
+		out << get<int>(*p);
 		break;
 	case node::type_list::LEAF_DOUBLE:
-		out << get<double>(*n.p);
+		out << get<double>(*p);
 		break;
 	case node::type_list::LEAF_STRING:
-		out << '\"' << *get<string*>(*n.p) << '\"';
+		out << '\"' << *get<string*>(*p) << '\"';
 		break;
 	case node::type_list::LEAF_BOOL:
-		out << (get<bool>(*n.p) == false ? "false" : "true");
+		out << (get<bool>(*p) == false ? "false" : "true");
 		break;
 	default:
 		break;
 	}
 }
 
-void Json::show(ostream& out)const
+void Json::output(ostream& out)const
 {
-	root->show(out, *root, 0);
+	root->show(out, 0);
 }
+
