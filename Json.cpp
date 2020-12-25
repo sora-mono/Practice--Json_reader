@@ -1,6 +1,6 @@
 #include "Json.h"
 
-extern const int MAX_STR_LENGTH;
+extern const int MAX_STR_LENGTH;	//可容纳最大字符串长度，定义在Json.h中
 
 using namespace std;
 
@@ -11,6 +11,7 @@ Json::node::~node()
 {
 	delete p;
 }
+
 Json::node::node(Json::node&& n)noexcept
 {
 	p = n.p;
@@ -18,20 +19,24 @@ Json::node::node(Json::node&& n)noexcept
 	type = n.type;
 	n.type = type_list::EMPTY;
 }
+
 Json::Json()
 {
 	root = nullptr;
 }
+
 Json::Json(const string& str)
 {
 	loads(str);
 }
+
 Json::Json(Json&& j)noexcept
 {
 	root = j.root;
 	j.root = nullptr;
 }
-Json& Json::loads(const string& str)
+
+Json& Json::loads(const string& str)	//加载字符串
 {
 	size_t index = 0;
 	node* now = new node(node::type_list::ROOT, false);
@@ -261,7 +266,7 @@ Json& Json::loads(const string& str)
 	return *this;
 }
 
-void Json::node::show(ostream& s, const obj_var& x)const
+void Json::node::show(ostream& s, const obj_var& x)const	//根据key的类型显示不同的数据，index为硬编码
 {
 	switch (x.index())
 	{

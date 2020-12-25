@@ -9,7 +9,7 @@
 #include<string>
 
 
-const int MAX_STR_LENGTH = 500;
+const int MAX_STR_LENGTH = 500;		//可容纳最大字符串长度（key或value的最大字符数目）
 
 using namespace std;
 
@@ -51,7 +51,7 @@ public:
 		using obj_var = variant<std::monostate, int, double, string>;
 		using num_int = int;
 		using num_double = double;
-		enum class type_list :char { ROOT,EMPTY,DICTIONARY, VECTOR, LEAF_INT, LEAF_DOUBLE, LEAF_STRING, LEAF_BOOL };
+		enum class type_list :char { ROOT, EMPTY, DICTIONARY, VECTOR, LEAF_INT, LEAF_DOUBLE, LEAF_STRING, LEAF_BOOL };	
 		inline node() :type(node::type_list::EMPTY), p(nullptr) {}
 		template<class T>
 		inline node(type_list type_, T p_);
@@ -66,26 +66,26 @@ public:
 		//template<class T, class...Args>
 		//pointer get_value(const T& t, const Args&...args)const;
 		template<class T>
-		inline T& get_value_reference()const;
+		inline T& get_value_reference()const;	//递归展开的结尾，获取给定类型（T）变量
 		template<class T>
-		inline T get_value_noreference()const;
+		inline T get_value_noreference()const;	//获取const char*
 		template<class T>
-		inline T get_value_noreference();
+		inline T get_value_noreference();		//获取Json对象
 
 		template<class Tr, class T, class...Args>
-		inline Tr& get_value_reference(const T& t, const Args&...args);
+		inline Tr& get_value_reference(const T& t, const Args&...args);		//获取数据的引用，当前处理的索引是字符串
 
 		template<class Tr, Not_string T, class ...Args>
-		inline Tr& get_value_reference(const T& t, const Args&...args);
+		inline Tr& get_value_reference(const T& t, const Args&...args);		//获取数据的引用，当前处理的索引不是字符串
 
 		template<Json_or_chararray Tr, class T, class...Args>
-		inline Tr get_value_noreference(const T& t, const Args&...args);
+		inline Tr get_value_noreference(const T& t, const Args&...args);	//获取非引用值，当前处理的索引是字符串
 
 		template<Json_or_chararray Tr, Not_string T, class...Args>
-		inline Tr get_value_noreference(const T& t, const Args&...args);
+		inline Tr get_value_noreference(const T& t, const Args&...args);	//获取非引用值（Json对象或const char*），当前处理的索引不是字符串
 
-		type_list type;
-		pointer* p;
+		type_list type;	//节点类型
+		pointer* p;		//指向存储数据variant的指针
 	};
 
 	Json();
@@ -94,7 +94,7 @@ public:
 	Json(Json&& j) noexcept;
 
 	inline ~Json() {};
-	Json& loads(const string& str);
+	Json& loads(const string& str);		//加载字符串，同时清除原来存的串（如果该Json类为最后一个持有那个串的类）
 	void output(ostream& out)const;
 	auto get_type()const { return root.get()->type; }
 
@@ -104,10 +104,10 @@ public:
 		|| is_same<typename decay<Tr>::type, const char*>::value
 		|| is_same<typename decay<Tr>::type, Json>::value
 		|| is_same<typename decay<Tr>::type, const Json>::value
-	{ return root->get_value_noreference<Tr, Args...>(args...); }
+	{ return root->get_value_noreference<Tr, Args...>(args...); }	//获取非引用值的包装函数
 
-	template<class Tr, class ...Args>
-	inline Tr& get_value(const Args&...args) { return root->get_value_reference<Tr, Args...>(args...); }
+		template<class Tr, class ...Args>
+	inline Tr& get_value(const Args&...args) { return root->get_value_reference<Tr, Args...>(args...); }	//获取引用值的包装函数
 
 private:
 	shared_ptr<node> root;
