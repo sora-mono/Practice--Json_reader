@@ -8,6 +8,7 @@
 #include<exception>
 #include<string>
 
+
 const int MAX_STR_LENGTH = 500;
 
 using namespace std;
@@ -15,13 +16,18 @@ using namespace std;
 class Json;
 
 template<class T>
-concept argument = ( is_same<T, int>::value || is_same<T, double>::value || is_same<T, string>::value);
+concept Json_or_chararray =
+(is_same<char*, typename decay<T>::type>::value
+	|| is_same<const char*, typename decay<T>::type>::value
+	|| is_same<Json, typename decay<T>::type>::value
+	|| is_same<const Json, typename decay<T>::type>::value);
 
 template<class T>
-concept Json_or_chararray = (is_same<char*, typename decay<T>::type>::value || is_same<Json, T>::value);
-
-template<class T>
-concept Not_string = !(is_same<char*, typename decay<T>::type>::value || is_same<string, typename decay<T>::type>::value);
+concept Not_string =
+!(is_same<char*, typename decay<T>::type>::value
+	|| is_same<const char*, typename decay<T>::type>::value
+	|| is_same<string, typename decay<T>::type>::value
+	|| is_same<const string, typename decay<T>::type>::value);
 
 class Json
 {
@@ -45,7 +51,7 @@ public:
 		using obj_var = variant<std::monostate, int, double, string>;
 		using num_int = int;
 		using num_double = double;
-		enum class type_list :char { EMPTY, ROOT, DICTIONARY, VECTOR, LEAF_INT, LEAF_DOUBLE, LEAF_STRING, LEAF_BOOL };
+		enum class type_list :char { ROOT,EMPTY,DICTIONARY, VECTOR, LEAF_INT, LEAF_DOUBLE, LEAF_STRING, LEAF_BOOL };
 		inline node() :type(node::type_list::EMPTY), p(nullptr) {}
 		template<class T>
 		inline node(type_list type_, T p_);
@@ -66,14 +72,14 @@ public:
 		template<class T>
 		inline T get_value_noreference();
 
-		template<class Tr, const string& str, class...Args>
-		inline Tr& get_value_reference(const Args&...args);
+		template<class Tr, class T, class...Args>
+		inline Tr& get_value_reference(const T& t, const Args&...args);
 
 		template<class Tr, Not_string T, class ...Args>
 		inline Tr& get_value_reference(const T& t, const Args&...args);
 
-		template<Json_or_chararray Tr, const string& str, class...Args>
-		inline Tr get_value_noreference(const Args&...args);
+		template<Json_or_chararray Tr, class T, class...Args>
+		inline Tr get_value_noreference(const T& t, const Args&...args);
 
 		template<Json_or_chararray Tr, Not_string T, class...Args>
 		inline Tr get_value_noreference(const T& t, const Args&...args);
@@ -90,9 +96,14 @@ public:
 	inline ~Json() {};
 	Json& loads(const string& str);
 	void output(ostream& out)const;
+	auto get_type()const { return root.get()->type; }
 
 	template<class Tr, class...Args>
-	inline Tr get_value(const Args&...args) requires is_same<typename decay<Tr>::type, char*>::value||is_same<typename decay<Tr>::type,Json>::value
+	inline Tr get_value(const Args&...args)
+		requires is_same<typename decay<Tr>::type, char*>::value
+		|| is_same<typename decay<Tr>::type, const char*>::value
+		|| is_same<typename decay<Tr>::type, Json>::value
+		|| is_same<typename decay<Tr>::type, const Json>::value
 	{ return root->get_value_noreference<Tr, Args...>(args...); }
 
 	template<class Tr, class ...Args>
@@ -104,87 +115,16 @@ private:
 	inline Json(shared_ptr<node>& root_) : root(root_) {}
 };
 
-template<>
-string& Json::node::get_value_reference<string>()const
-{
-	if (type == type_list::LEAF_STRING)
-	{
-		return *get<string*>(*p);
-	}
-	else
-	{
-		throw invalid_argument("No (string) type data saved in this node");
-	}
-}
-
-template<>
-int& Json::node::get_value_reference<int>()const
-{
-	if (type == type_list::LEAF_INT)
-	{
-		return get<int>(*p);
-	}
-	else
-	{
-		throw invalid_argument("No (int) type saved in this node");
-	}
-}
-
-template<>
-double& Json::node::get_value_reference<double>()const
-{
-	if (type == type_list::LEAF_DOUBLE)
-	{
-		return get<double>(*p);
-	}
-	else
-	{
-		throw invalid_argument("No (double) type saved in this node");
-	}
-}
-
-template<>
-bool& Json::node::get_value_reference<bool>()const
-{
-	if (type == type_list::LEAF_BOOL)
-	{
-		return get<bool>(*p);
-	}
-	else
-	{
-		throw invalid_argument("No (bool) type saved in this node");
-	}
-}
-
-template<>
-const char* Json::node::get_value_noreference<const char*>()const
-{
-	if (type == type_list::LEAF_STRING)
-	{
-		return get<string*>(*p)->c_str();
-	}
-	else
-	{
-		throw invalid_argument("No (const char*) type data saved in this node");
-	}
-}
-
-template<>
-Json Json::node::get_value_noreference<Json>()
-{
-	return Json(*this);
-}
-
-template<Json_or_chararray Tr, const string& str, class...Args>
-Tr Json::node::get_value_noreference(const Args&...args)
+template<Json_or_chararray Tr, class T, class...Args>
+Tr Json::node::get_value_noreference(const T& t, const Args&...args)
 {
 	if (type == node::type_list::DICTIONARY)
 	{
 		obj_map* p_map = get<obj_map*>(*p);
-		obj_map::iterator iter = p_map->find(obj_var(str));
+		obj_map::iterator iter = p_map->find(obj_var(t));
 		if (iter != p_map->end())
 		{
-			return iter->second.get()->get_value_noreference<Tr, Args...>(args...);
+			return iter->second.get()->get_value_noreference<Tr, const Args...>(args...);
 		}
 		else
 		{
@@ -214,7 +154,7 @@ Tr Json::node::get_value_noreference(const T& t, const Args&...args)
 		obj_map::iterator iter = p_map->find(obj_var(t));
 		if (iter != p_map->end())
 		{
-			return iter->second.get()->get_value<Tr, Args...>(args...);
+			return iter->second.get()->get_value_noreference<Tr, const Args...>(args...);
 		}
 		else
 		{
@@ -225,7 +165,7 @@ Tr Json::node::get_value_noreference(const T& t, const Args&...args)
 	case Json::node::type_list::VECTOR:
 	{
 		obj_vec* p_vec = get<obj_vec*>(*p);
-		return	(*p_vec)[t].get()->get_value<Tr, Args...>(args...);
+		return	(*p_vec)[t].get()->get_value_noreference<Tr, const Args...>(args...);
 	}
 	break;
 	case Json::node::type_list::LEAF_INT:
@@ -240,16 +180,16 @@ Tr Json::node::get_value_noreference(const T& t, const Args&...args)
 	}
 }
 
-template<class Tr, const string& str, class...Args>
-Tr& Json::node::get_value_reference(const Args&...args)
+template<class Tr, class T, class...Args>
+Tr& Json::node::get_value_reference(const T& t, const Args&...args)
 {
 	if (type == node::type_list::DICTIONARY)
 	{
 		obj_map* p_map = get<obj_map*>(*p);
-		obj_map::iterator iter = p_map->find(obj_var(str));
+		obj_map::iterator iter = p_map->find(obj_var(t));
 		if (iter != p_map->end())
 		{
-			return iter->second.get()->get_value_reference<Tr, Args...>(args...);
+			return iter->second.get()->get_value_reference<Tr, const Args...>(args...);
 		}
 		else
 		{
@@ -279,7 +219,7 @@ Tr& Json::node::get_value_reference(const T& t, const Args&...args)
 		obj_map::iterator iter = p_map->find(obj_var(t));
 		if (iter != p_map->end())
 		{
-			return iter->second.get()->get_value_reference<Tr, Args...>(args...);
+			return iter->second.get()->get_value_reference<Tr, const Args...>(args...);
 		}
 		else
 		{
@@ -290,7 +230,7 @@ Tr& Json::node::get_value_reference(const T& t, const Args&...args)
 	case Json::node::type_list::VECTOR:
 	{
 		obj_vec* p_vec = get<obj_vec*>(*p);
-		return	(*p_vec)[t].get()->get_value_reference<Tr, Args...>(args...);
+		return	(*p_vec)[t].get()->get_value_reference<Tr, const Args...>(args...);
 	}
 	break;
 	case Json::node::type_list::LEAF_INT:
@@ -304,4 +244,3 @@ Tr& Json::node::get_value_reference(const T& t, const Args&...args)
 		break;
 	}
 }
-

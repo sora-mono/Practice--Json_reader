@@ -351,4 +351,3 @@ void Json::output(ostream& out)const
 {
 	root->show(out, 0);
 }
-
