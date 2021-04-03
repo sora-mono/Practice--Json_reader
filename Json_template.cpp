@@ -5,6 +5,7 @@ class Json;
 class node;
 
 #ifndef TEMPLATE_GETVALUE
+#define TEMPLATE_GETVALUE
 template<>
 string& Json::node::get_value_reference<string>()const
 {

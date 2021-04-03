@@ -57,12 +57,10 @@ Json& Json::loads(const string& str)	//¼ÓÔØ×Ö·û´®
 			now = new node(node::type_list::VECTOR, new node::obj_vec);
 			break;
 		case'}':
-		case']':
 			switch (st.top().second->type)
 			{
 			case node::type_list::DICTIONARY:
-				if ((now->type == node::type_list::DICTIONARY && str[index] == '}')
-					|| (now->type == node::type_list::VECTOR && str[index] == ']'))
+				if (now->type == node::type_list::DICTIONARY && str[index] == '}')
 				{
 					get<node::obj_map*>(*st.top().second->p)->emplace(move(st.top().first), now);
 					now = st.top().second;
@@ -70,12 +68,25 @@ Json& Json::loads(const string& str)	//¼ÓÔØ×Ö·û´®
 				}
 				else
 				{
-					throw runtime_error("Can't find a pair of {} or []");
+					throw runtime_error("Can't find a pair of {}");
 				}
 				break;
+			case node::type_list::ROOT:
+				delete st.top().second;
+				st.pop();
+				root.reset(now);
+				index = str.size();
+				break;
+			default:
+				throw runtime_error("Can't put a vector in a node which is not a container");
+				break;
+			}
+			break;
+		case']':
+			switch (st.top().second->type)
+			{
 			case node::type_list::VECTOR:
-				if ((now->type == node::type_list::DICTIONARY && str[index] == '}')
-					|| (now->type == node::type_list::VECTOR && str[index] == ']'))
+				if (now->type == node::type_list::VECTOR && str[index] == ']')
 				{
 					get<node::obj_vec*>(*st.top().second->p)->emplace_back(now);
 					now = st.top().second;
@@ -262,6 +273,10 @@ Json& Json::loads(const string& str)	//¼ÓÔØ×Ö·û´®
 			break;
 		}
 		++index;
+	}
+	if (now->type == node::type_list::ROOT)
+	{
+		throw std::runtime_error("Invalid Json");
 	}
 	return *this;
 }
